@@ -45,11 +45,16 @@ def read(test_name: str, same_sps: False) -> pd.DataFrame:
 
     # reorder axes so that mag columns are in X-Y-Z order
     data = data[["Time"] + AXES]
+    
+    #fill null mag values with previous value
+    data = data .fillna(method='ffill')
 
     # if enabled, remove every 10th row to create 96sps data
-    if same_sps: data = data.iloc[::10]
+    if same_sps: 
+        data = data.iloc[::10]
+        params[7]/=10
 
     # for some reason, the first mag data point is always erroneous, so remove its row
     data = data.iloc[1:]
 
-    return data
+    return data, params
