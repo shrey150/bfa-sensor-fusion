@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from math import sqrt
+import matplotlib.pyplot as plt
 
 import lib.csv_reader as reader
 import lib.mag_calibration as mag_cal
@@ -10,15 +11,24 @@ from lib.constants import *
 from pyquaternion import Quaternion
 
 #=========================================
-TEST_NAME = "mag_test_3"
+TEST_NAME = "euler_angles_2"
 DRAW_GRAPHS = False
 #=========================================
 
+print("KGA algorithm started.")
+print(f"Reading test '{TEST_NAME}'...")
+
 # read test data at 96 samples/second
-data = reader.read(TEST_NAME, same_sps=True)
+data, params = reader.read(TEST_NAME, same_sps=True)
+data[ACC_COLS] = data[ACC_COLS].rolling(window=100).mean().fillna(data[ACC_COLS].iloc[49])
+
+print("Test read.")
+print("Calibrating magnetometer data...")
 
 # calibrate magnetometer data
 data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS])
+
+print("Magnetometer calibration complete.")
 
 # DEBUG: plot data
 if DRAW_GRAPHS:
@@ -37,10 +47,17 @@ def calc_lg_q(row):
     acc = np.array(row[ACC_COLS])
     acc = acc / np.linalg.norm(acc)
 
+    # create magnetometer vector
+    mag = np.array(row[MAG_COLS])
+
+    # calculate auxiliary quats
     q_acc = calc_q_acc(*acc)
+    q_mag = calc_q_mag(*mag)
 
-    return q_acc
+    # combine quats (Equation 13)
+    lg_q = q_acc * q_mag
 
+    return lg_q
 
 def calc_q_acc(ax, ay, az):
     """
@@ -65,9 +82,53 @@ def calc_q_acc(ax, ay, az):
 
         return Quaternion(q0, q1, q2, q3)
 
-lg_q = data.apply(calc_lg_q, axis=1, result_type='expand')
+def calc_q_mag(mx, my, mz):
+    """
+    Calculates the quaternion representing magnetometer data, `q_mag` (Equation 35).
+    
+    The magnetometer vector should be normalized and calibrated before being passed into this function.
+    """
 
-# TODO: method to run for each time sample repeatedly over entire DF
-# (might be bad practice but it's best to follow along w/ the algorithm closely)
-# MAKE SURE TO NORMALIZE acc_x -> acc_z
-def calc_row(acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z): return None
+    # L represents gamma
+    L = mx**2 + my**2
+
+    if mx >= 0:
+        q0 = sqrt(L + mx*sqrt(L)) / sqrt(2*L)
+        q3 = my / (sqrt(2) * sqrt(L + mx*sqrt(L)))
+
+        return Quaternion(q0, 0, 0, q3)
+
+    elif mx < 0:
+        q0 = my / (sqrt(2) * sqrt(L - mx*sqrt(L)))
+        q3 = sqrt(L - mx*sqrt(L)) / sqrt(2*L)
+        
+        return Quaternion(q0, 0, 0, q3)
+
+print("Calculating local frame quats...")
+
+lg_q = data.apply(calc_lg_q, axis=1)
+
+print("Local frame quats calculated.")
+print("Converting to euler angle representation...")
+
+ANGLES = ["Yaw", "Pitch", "Roll"]
+
+lg_angles = lg_q.map(lambda x: x.yaw_pitch_roll).to_list()
+lg_angles = pd.DataFrame(lg_angles, columns=ANGLES)
+lg_angles["Time"] = data["Time"].to_list()
+
+print("Euler angles calculated.")
+print(lg_angles.head(20))
+
+# plot roll/pitch/yaw independently for debugging
+if DRAW_GRAPHS:
+    plt.plot(lg_angles["Time"], lg_angles["Roll"] * RAD_TO_DEG)
+    plotter.show_plot()
+
+    plt.plot(lg_angles["Time"], lg_angles["Pitch"] * RAD_TO_DEG)
+    plotter.show_plot()
+
+    plt.plot(lg_angles["Time"], lg_angles["Yaw"] * RAD_TO_DEG)
+    plotter.show_plot()
+
+plotter.draw_sensor(lg_angles["Time"], lg_angles[ANGLES] * RAD_TO_DEG)
