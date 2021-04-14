@@ -1,3 +1,7 @@
+'''
+Kalman Filter functions based on Long Tran's implementation:
+https://digitalcommons.calpoly.edu/eesp/400/
+'''
 import numpy as np
 import pandas as pd
 from scipy import integrate
@@ -177,7 +181,7 @@ def k_filtered_angles(data):
     '''
 
     A_roll, A_pitch, M_yaw = calc_e_angles(data)
-    
+
     k_roll = kalman_filter(A_roll, data['GyroX'].to_numpy())
     k_pitch = kalman_filter(A_pitch, data['GyroY'].to_numpy())
     k_yaw = kalman_filter(M_yaw, data['GyroZ'].to_numpy())
