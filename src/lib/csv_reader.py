@@ -39,7 +39,7 @@ def read(test_name: str, same_sps=False) -> pd.DataFrame:
 
     # apply mag sensitivity
     mag_sens = 4800
-    data[CSV_MAG_COLS] = data[CSV_MAG_COLS].applymap(lambda x: x * mag_sens / 8192)
+    data[CSV_MAG_COLS] = data[CSV_MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
 
     # invert MagZ to align mag axes with accel/gyro axes
     #data[["MagX", "MagY"]] = -data[["MagX", "MagY"]]

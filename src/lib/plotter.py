@@ -12,6 +12,8 @@ def show_plot(title=""):
     plt.minorticks_on()
     plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
     plt.legend()
+
+    if title: plt.savefig(f"out/{title}.png")
     plt.show()
 
 def draw_mag_sphere(x_data, y_data, z_data):
@@ -51,9 +53,10 @@ def draw_sphere(r=1, c=(0,0,0), ax=None):
     z = np.outer(np.cos(u), np.ones_like(v))
 
     ax.plot_wireframe(c[0]+r*x, c[1]+r*y, c[2]+r*z, color="r", alpha=0.25)
+    plt.savefig("out/kga_mag_cal.png")
     plt.show()
 
-def draw_sensor(time, data: pd.DataFrame):
+def draw_sensor(time, data: pd.DataFrame, graph_name: str=""):
     """
     Graphs data vs time for each axis of a given sensor.
 
@@ -62,7 +65,7 @@ def draw_sensor(time, data: pd.DataFrame):
     """
 
     for name, series in data.iteritems(): plt.plot(time, series, label=name)
-    show_plot()
+    show_plot(graph_name)
 
 def draw_all(data: pd.DataFrame):
     """Graphs all sensor data for a given DataFrame."""
@@ -70,4 +73,4 @@ def draw_all(data: pd.DataFrame):
     # define a 2D list so that each sensor can be iterated over
     SENSORS = [ACC_COLS, GYRO_COLS, MAG_COLS]
 
-    for s_axes in SENSORS: draw_sensor(data["Time"], data[s_axes])
+    for s_axes in SENSORS: draw_sensor(data["Time"], data[s_axes], (s_axes[0])[:-1])

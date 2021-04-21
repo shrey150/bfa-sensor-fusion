@@ -17,8 +17,9 @@ from pyquaternion import Quaternion
 TEST_NAME = "euler_angles_2"
 DEBUG_LEVEL = 0
 
+USE_BUTTERWORTH = False
 CALIBRATE_MAG = True
-NORM_HEADING = False
+NORM_HEADING = True
 #=========================================
 
 print("KGA algorithm started.")
@@ -29,18 +30,17 @@ data, params = reader.read(TEST_NAME, same_sps=True)
 
 # normalized cutoff frequency = cutoff frequency / (2 * sample rate)
 ORDER = 10
-CUTOFF_FREQ = 100
+CUTOFF_FREQ = 50
 NORM_CUTOFF_FREQ = CUTOFF_FREQ / (2 * 960)
 
-# Butterworth filter
-num_coeffs, denom_coeffs = scipy.signal.butter(ORDER, NORM_CUTOFF_FREQ)
-
 # TODO: filtering mag causes inaccurate data
-for axis in ACC_COLS:
-    data[axis] = scipy.signal.lfilter(num_coeffs, denom_coeffs, data[axis])
-
-    # OLD: simple moving average
-    #data[ACC_COLS] = data[ACC_COLS].rolling(window=50).mean().fillna(data[ACC_COLS].iloc[24])
+if USE_BUTTERWORTH:
+    # Butterworth filter
+    num_coeffs, denom_coeffs = scipy.signal.butter(ORDER, NORM_CUTOFF_FREQ)
+    for axis in ACC_COLS: data[axis] = scipy.signal.lfilter(num_coeffs, denom_coeffs, data[axis])
+else:
+    # simple moving average
+    data[ACC_COLS + MAG_COLS] = data[ACC_COLS + MAG_COLS].rolling(window=50).mean().fillna(data[ACC_COLS + MAG_COLS].iloc[24])
 
 print("Test read.")
 
@@ -160,23 +160,22 @@ if DEBUG_LEVEL == 2:
     plt.plot(lg_angles["Time"], lg_angles["Yaw"])
     plotter.show_plot()
 
-#plotter.draw_sensor(lg_angles["Time"], lg_angles[ANGLES])
+plotter.draw_sensor(lg_angles["Time"], lg_angles[ANGLES], "ea_kga")
 
-print("Saving Euler angles to 'ea_out_kga.csv'...")
-lg_angles[["Roll", "Pitch", "Yaw"]].to_csv("ea_out_kga.csv", index=False, header=False)
+print("Saving Euler angles to 'out/ea_kga.csv'...")
+lg_angles[["Roll", "Pitch", "Yaw"]].to_csv("out/ea_kga.csv", index=False, header=False)
 print("Done.")
 
-print("Saving quats to 'quat_out_kga.csv'...")
+print("Saving quats to 'out/quat_kga.csv'...")
 lg_quat_arr = lg_q.map(lambda x: x.elements).to_list()
 lg_quat_arr = pd.DataFrame(lg_quat_arr, columns=["w","x","y","z"])
-lg_quat_arr.to_csv("quat_out_kga.csv", index=False, header=False)
+lg_quat_arr.to_csv("out/quat_kga.csv", index=False, header=False)
 print("Done.")
 
 print("Loading orientation view...")
 
 root = os.path.dirname(os.path.abspath(__file__))
 bin_path = os.path.join(root, "../bin")
-file_path = os.path.join(root, "../quat_out_kga.csv")
+file_path = os.path.join(root, "../out/quat_kga.csv")
 
 subprocess.run(["orientation_view", "-sps", "96", "-file", file_path], cwd=bin_path, shell=True)
-print("Loaded.")
