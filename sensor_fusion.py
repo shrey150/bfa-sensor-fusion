@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-TEST_NAME = "mag_test_3"
+TEST_NAME = "euler_angles_2"
 
 dt = 1/960
 
@@ -65,7 +65,9 @@ mag_sens = 4800
 data[mag_cols] = data[mag_cols].applymap(lambda x: x * mag_sens / 8192)
 
 # invert X and Y mag axes to align with accel axes
-data[["MagX", "MagY"]] = -data[["MagX", "MagY"]]
+data["MagZ"] = -data["MagZ"]
+
+data = data.fillna(method='ffill')
 
 # FIXME copy for debugging, remove later
 original_mag_data = data[mag_cols].dropna()
@@ -115,11 +117,11 @@ values = np.arange(tpCount)
 timePeriod = tpCount/sample_rate
 frequencies = values/timePeriod
 
-plt.plot(frequencies, abs(fourierTransform), label="AccelX")
+#plt.plot(frequencies, abs(fourierTransform), label="AccelX")
 
 # display the plot
-plt.xlim(0,960)
-show_plot("Accelerometer FFT")
+# plt.xlim(0,960)
+# show_plot("Accelerometer FFT")
 
 # normalized cutoff frequency = cutoff frequency / (2 * sample rate)
 ORDER = 10
@@ -137,30 +139,30 @@ rolling_data = data[acc_cols].rolling(window=100).mean().fillna(data[acc_cols].i
 # apply simple moving average
 data[acc_cols] = rolling_data
 
-plt.plot(data["Time"], data["AccelX"], label="AccelX")
-plt.plot(data["Time"], filtered_data, label="Filtered")
-plt.plot(data["Time"], rolling_data["AccelX"], label="SMA")
-show_plot("Accelerometer Smoothing")
+# plt.plot(data["Time"], data["AccelX"], label="AccelX")
+# plt.plot(data["Time"], filtered_data, label="Filtered")
+# plt.plot(data["Time"], rolling_data["AccelX"], label="SMA")
+# show_plot("Accelerometer Smoothing")
 
 
-# %%
-# plot acceleration
-plt.plot(data["Time"], data["AccelX"], label="AccelX")
-plt.plot(data["Time"], data["AccelY"], label="AccelY")
-plt.plot(data["Time"], data["AccelZ"], label="AccelZ")
-show_plot("Accelerometer")
+# # %%
+# # plot acceleration
+# plt.plot(data["Time"], data["AccelX"], label="AccelX")
+# plt.plot(data["Time"], data["AccelY"], label="AccelY")
+# plt.plot(data["Time"], data["AccelZ"], label="AccelZ")
+# show_plot("Accelerometer")
 
-# plot gyroscope
-plt.plot(data["Time"], data["GyroX"], label="GyroX")
-plt.plot(data["Time"], data["GyroY"], label="GyroY")
-plt.plot(data["Time"], data["GyroZ"], label="GyroZ")
-show_plot("Gyroscope")
+# # plot gyroscope
+# plt.plot(data["Time"], data["GyroX"], label="GyroX")
+# plt.plot(data["Time"], data["GyroY"], label="GyroY")
+# plt.plot(data["Time"], data["GyroZ"], label="GyroZ")
+# show_plot("Gyroscope")
 
-# plot magnetometer
-plt.plot(mag_data["Time"], mag_data["MagX"], label="MagX")
-plt.plot(mag_data["Time"], mag_data["MagY"], label="MagY")
-plt.plot(mag_data["Time"], mag_data["MagZ"], label="MagZ")
-show_plot("Magnetometer")
+# # plot magnetometer
+# plt.plot(mag_data["Time"], mag_data["MagX"], label="MagX")
+# plt.plot(mag_data["Time"], mag_data["MagY"], label="MagY")
+# plt.plot(mag_data["Time"], mag_data["MagZ"], label="MagZ")
+# show_plot("Magnetometer")
 
 
 # %%
@@ -171,11 +173,11 @@ ang_x = integrate.cumtrapz(y=data["GyroX"], x=data["Time"], initial=0)
 ang_y = integrate.cumtrapz(y=data["GyroY"], x=data["Time"], initial=0)
 ang_z = integrate.cumtrapz(y=data["GyroZ"], x=data["Time"], initial=0)
 
-# plot gyroscope angles
-plt.plot(data["Time"], ang_x, label="AngX")
-plt.plot(data["Time"], ang_y, label="AngY")
-plt.plot(data["Time"], ang_z, label="AngZ")
-show_plot("Gyroscope Angles")
+# # plot gyroscope angles
+# plt.plot(data["Time"], ang_x, label="AngX")
+# plt.plot(data["Time"], ang_y, label="AngY")
+# plt.plot(data["Time"], ang_z, label="AngZ")
+# show_plot("Gyroscope Angles")
 
 
 # %%
@@ -204,6 +206,8 @@ def ellipse_fit(x_data, y_data):
 # fit data to 3D ellipsoid
 # from: https://teslabs.com/articles/magnetometer-calibration/
 def ellipsoid_fit(s):
+    print(s)
+
     # D (samples)
     D = np.array([s[0]**2., s[1]**2., s[2]**2.,
                     2.*s[1]*s[2], 2.*s[0]*s[2], 2.*s[0]*s[1],
@@ -251,9 +255,7 @@ def ellipsoid_fit(s):
 
 
 # %%
-# magnetometer calibration techniques 
-# (not being used, superceded by ellipsoid method)
-
+# magnetometer helper functions
 def draw_mag_sphere(x_data, y_data, z_data):
     ax.scatter(x_data, y_data, z_data)
     limits = np.array([getattr(ax, f'get_{axis}lim')() for axis in 'xyz'])
@@ -275,56 +277,6 @@ def draw_sphere(r=1, c=(0,0,0)):
     z = np.outer(np.cos(u), np.ones_like(v))
     ax.plot_wireframe(c[0]+r*x, c[1]+r*y, c[2]+r*z, color="r", alpha=0.25)
 
-# plot x-axis rotation (MagY, MagZ)
-plt.scatter(original_mag_data["MagY"], original_mag_data["MagZ"], label="YZ (x-rotation)")
-
-# plot y-axis rotation (MagX, MagZ)
-plt.scatter(original_mag_data["MagX"], original_mag_data["MagZ"], label="XZ (y-rotation)")
-
-# plot z-axis rotation (MagX, MagY)
-plt.scatter(original_mag_data["MagX"], original_mag_data["MagY"], label="XY (z-rotation)")
-
-# plot origin (0,0)
-plt.scatter([0], [0], label="Origin")
-
-# display the plot
-plt.axis("square")
-show_plot("Uncalibrated Mag Data")
-
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
-
-# 3D plot of original mag data
-draw_mag_sphere(original_mag_data["MagX"], original_mag_data["MagY"], original_mag_data["MagZ"])
-draw_sphere()
-plt.title("Uncalibrated Mag Data")
-plt.show()
-
-# plot x-axis rotation (MagY, MagZ)
-plt.scatter(mag_data["MagY"], mag_data["MagZ"], label="YZ (x-rotation)")
-
-# plot y-axis rotation (MagX, MagZ)
-plt.scatter(mag_data["MagX"], mag_data["MagZ"], label="XZ (y-rotation)")
-
-# plot z-axis rotation (MagX, MagY)
-plt.scatter(mag_data["MagX"], mag_data["MagY"], label="XY (z-rotation)")
-
-# plot origin (0,0)
-plt.scatter([0], [0], label="Origin")
-
-# display the plot
-plt.axis("square")
-show_plot("Calibrated Mag Data")
-
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
-
-# 3D plot of mag data
-draw_mag_sphere(mag_data["MagX"], mag_data["MagY"], mag_data["MagZ"])
-draw_sphere()
-plt.title("Calibrated Mag Data")
-plt.show()
-
 
 # %%
 # ellipsoid fit magnetometer calibration
@@ -335,6 +287,21 @@ from scipy.linalg import sqrtm
 # calculate ellipsoid for data
 s = np.array(original_mag_data[mag_cols]).T
 M, n, d = ellipsoid_fit(s)
+
+'''
+# Saved parameters (don't work):
+# ==============================
+
+M = np.array([[ 0.58199407, -0.02652191, -0.0135197],
+              [-0.02652191,   0.62160986,  0.00585611],
+              [-0.0135197,    0.00585611,  0.52341533]])
+
+n = np.array([[ 24.26603767],
+            [-48.18549193],
+            [97.85216214]])
+
+d = 6658.0282395345075
+'''
 
 print(M, n, d)
 
@@ -364,57 +331,63 @@ plt.scatter(mag_data["MagX"], mag_data["MagY"], label="XY (z-rotation)")
 # plot origin (0,0)
 plt.scatter([0], [0], label="Origin")
 
-# display the plot
-plt.axis("square")
-show_plot("Ellipsoid Mag Data")
+# # display the plot
+# plt.axis("square")
+# show_plot("Ellipsoid Mag Data")
 
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
+# fig = plt.figure()
+# ax = fig.add_subplot(projection="3d")
 
-# 3D plot of mag data
-draw_mag_sphere(mag_data["MagX"], mag_data["MagY"], mag_data["MagZ"])
-draw_sphere()
-plt.title("Ellipsoid Mag Data (3D)")
-plt.show()
+# # 3D plot of mag data
+# draw_mag_sphere(mag_data["MagX"], mag_data["MagY"], mag_data["MagZ"])
+# draw_sphere()
+# plt.title("Ellipsoid Mag Data (3D)")
+# plt.show()
 
-
-# %%
-# bounding sphere test (EXPERIMENTAL)
-import miniball
-
-# calculate 100% bounding sphere
-C, r2 = miniball.get_bounding_ball(mag_data[mag_cols].to_numpy())
-
-fig = plt.figure()
-ax = fig.add_subplot(projection="3d")
-
-# draw 100% bounding sphere
-draw_mag_sphere(mag_data["MagX"], mag_data["MagY"], mag_data["MagZ"])
-draw_sphere(math.sqrt(r2), C)
-plt.title("Bounding Sphere")
-plt.show()
+# # plot magnetometer
+# plt.plot(mag_data["Time"], mag_data["MagX"], label="MagX")
+# plt.plot(mag_data["Time"], mag_data["MagY"], label="MagY")
+# plt.plot(mag_data["Time"], mag_data["MagZ"], label="MagZ")
+# show_plot("Magnetometer")
 
 
-# %%
-# ellipse fitting test (z-axis)
-# (NOT IN USE)
+# # %%
+# # bounding sphere test (EXPERIMENTAL)
+# import miniball
 
-# plot z-axis rotation (MagX, MagY)
-plt.scatter(mag_data["MagX"], mag_data["MagY"], label="XY (z-rotation)")
-plt.plot()
+# # calculate 100% bounding sphere
+# C, r2 = miniball.get_bounding_ball(mag_data[mag_cols].to_numpy())
 
-# calculate coefficients for ellipse fitting
-A,B,C,D,E = ellipse_fit(mag_data["MagX"], mag_data["MagY"])
+# fig = plt.figure()
+# ax = fig.add_subplot(projection="3d")
 
-x = np.linspace(-500, 500, 1000)
-y = np.linspace(-500, 500, 1000)
-x, y = np.meshgrid(x, y)
+# # draw 100% bounding sphere
+# draw_mag_sphere(mag_data["MagX"], mag_data["MagY"], mag_data["MagZ"])
+# draw_sphere(math.sqrt(r2), C)
+# plt.title("Bounding Sphere")
+# plt.show()
 
-plt.contour(x, y, A*x**2 + B*x*y + C*y**2 + D*x + E*y, [0])
 
-# display the plot
-plt.axis("square")
-show_plot("Magnetometer Ellipse Fitting")
+# # %%
+# # ellipse fitting test (z-axis)
+# # (NOT IN USE)
+
+# # plot z-axis rotation (MagX, MagY)
+# plt.scatter(mag_data["MagX"], mag_data["MagY"], label="XY (z-rotation)")
+# plt.plot()
+
+# # calculate coefficients for ellipse fitting
+# A,B,C,D,E = ellipse_fit(mag_data["MagX"], mag_data["MagY"])
+
+# x = np.linspace(-500, 500, 1000)
+# y = np.linspace(-500, 500, 1000)
+# x, y = np.meshgrid(x, y)
+
+# plt.contour(x, y, A*x**2 + B*x*y + C*y**2 + D*x + E*y, [0])
+
+# # display the plot
+# plt.axis("square")
+# show_plot("Magnetometer Ellipse Fitting")
 
 
 # %%

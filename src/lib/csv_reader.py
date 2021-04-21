@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
+import csv
 
 from lib.constants import *
 
-def read(test_name: str, same_sps: False) -> pd.DataFrame:
+def read(test_name: str, same_sps=False) -> pd.DataFrame:
     """
     Reads raw test data from a given CSV and returns a Pandas DataFrame.
     
@@ -40,17 +41,9 @@ def read(test_name: str, same_sps: False) -> pd.DataFrame:
     mag_sens = 4800
     data[CSV_MAG_COLS] = data[CSV_MAG_COLS].applymap(lambda x: x * mag_sens / 8192)
 
-    # invert X and Y mag axes to align with accel axes
-    data[["MagX", "MagY"]] = -data[["MagX", "MagY"]]
-
-    # TODO: look into aligning accel/gyro and mag axes:
-    #
-    # (1) Accel and specifically AccelZ might be flipped to line up with [0,0,1]
-    # (2) MagX and MagY should be flipped, but MagZ should be inverted
-    # (3) CSV_MAG_COLS should be changed to MAG_COLS if flipping MagX and MagY is incorrect
-    #
-    #data["MagZ"] = -data["MagZ"]
-    #data["AccelX"] = -data["AccelX"]
+    # invert MagZ to align mag axes with accel/gyro axes
+    #data[["MagX", "MagY"]] = -data[["MagX", "MagY"]]
+    data["MagZ"] = -data["MagZ"]
 
     # reorder axes so that mag columns are in X-Y-Z order
     data = data[["Time"] + AXES]
