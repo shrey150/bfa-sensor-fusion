@@ -54,29 +54,16 @@ def ellipsoid_fit(s):
 
     return M, n, d
 
-def calibrate(mag_data: pd.DataFrame) -> pd.DataFrame:
+def calibrate(mag_data: pd.DataFrame, M=None, n=None, d=None) -> pd.DataFrame:
     """
     Returns a calibrated set of magnetometer samples.
 
     `mag_data` should be passed as a subset DataFrame with columns `[MagX, MagY, MagZ]`. 
     """
 
-    # calculate ellipsoid parameters
-    M, n, d = ellipsoid_fit(np.array(mag_data).T)
-
-    """
-    M = np.array([[ 0.58177243, -0.02693832, -0.01330884],
-                  [-0.02693832,  0.6216041,   0.00564686],
-                  [-0.01330884,  0.00564686,  0.52365494]])
-         
-    n = np.array([[ 24.31781846],
-                  [-48.29781935],
-                  [ 97.96143451]])
-        
-    d = 6699.415697384884
-    """
-
-    #print(M, n, d)
+    # calculate ellipsoid parameters if not passed in
+    if not (np.all(M) and np.all(n) and np.all(d)):
+        M, n, d = ellipsoid_fit(np.array(mag_data).T)
 
     # calculate calibration parameters for:
     # h_m = A @ h + b where h = A^-1 @ (h_m - b)

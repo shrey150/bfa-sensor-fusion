@@ -4,7 +4,7 @@ import csv
 
 from lib.constants import *
 
-def read(test_name: str, same_sps=False) -> pd.DataFrame:
+def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
     """
     Reads raw test data from a given CSV and returns a Pandas DataFrame.
     
@@ -33,17 +33,32 @@ def read(test_name: str, same_sps=False) -> pd.DataFrame:
     acc_sens = params[9]
     data[ACC_COLS] = data[ACC_COLS].applymap(lambda x: x * acc_sens * GRAVITY / 32768)
 
+    # invert Y and Z for accel and gyro
+    # TODO: not sure if this is necessary
+    data[["AccelY", "AccelZ"]] = -data[["AccelY", "AccelZ"]]
+    data[["GyroY", "GyroZ"]] = -data[["GyroY", "GyroZ"]]
+
     # apply gyro sensitivity
     gyro_sens = params[10]
     data[GYRO_COLS] = data[GYRO_COLS].applymap(lambda x: x * gyro_sens / 32768)
 
+    # use flipped mag axes if selected
+    MAG_AXES = CSV_MAG_COLS if correct_axes else MAG_COLS
+
     # apply mag sensitivity
     mag_sens = 4800
-    data[CSV_MAG_COLS] = data[CSV_MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
+    data[MAG_COLS] = data[MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
 
     # invert MagZ to align mag axes with accel/gyro axes
-    #data[["MagX", "MagY"]] = -data[["MagX", "MagY"]]
-    data["MagZ"] = -data["MagZ"]
+    if correct_axes: data["MagZ"] = -data["MagZ"]
+
+    # new_mag_data = data[MAG_COLS]
+    # new_mag_data["MagX"] = -data["MagZ"]
+    # new_mag_data["MagY"] = data["MagX"]
+    # new_mag_data["MagZ"] = -data["MagY"]
+    
+    # data[MAG_COLS] = new_mag_data
+    # data[MAG_COLS] = data[MAG_COLS].values[::-1]
 
     # reorder axes so that mag columns are in X-Y-Z order
     data = data[["Time"] + AXES]

@@ -19,14 +19,29 @@ DEBUG_LEVEL = 0
 
 USE_BUTTERWORTH = False
 CALIBRATE_MAG = True
+USE_PRECALC_MAG = False
+CORRECT_MAG_AXES = True
+ONLY_Q_MAG = False
 NORM_HEADING = True
+#=========================================
+
+M = np.array([[ 0.58177243, -0.02693832, -0.01330884],
+              [-0.02693832,  0.6216041,   0.00564686],
+              [-0.01330884,  0.00564686,  0.52365494]])
+        
+n = np.array([[ 24.31781846],
+                [-48.29781935],
+                [ 97.96143451]])
+    
+d = 6699.415697384884
+
 #=========================================
 
 print("KGA algorithm started.")
 print(f"Reading test '{TEST_NAME}'...")
 
 # read test data at 96 samples/second
-data, params = reader.read(TEST_NAME, same_sps=True)
+data, params = reader.read(TEST_NAME, same_sps=True, correct_axes=CORRECT_MAG_AXES)
 
 # normalized cutoff frequency = cutoff frequency / (2 * sample rate)
 ORDER = 10
@@ -46,7 +61,12 @@ print("Test read.")
 
 if CALIBRATE_MAG:
     print("Calibrating magnetometer data...")
-    data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS])
+
+    if USE_PRECALC_MAG:
+        data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS], M, n, d)
+    else:
+        data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS])
+
     print("Magnetometer calibration complete.")
 
 # DEBUG: plot data
@@ -63,7 +83,7 @@ def calc_lg_q(row):
     """
 
     # create normalized acceleration vector
-    acc = -np.array(row[ACC_COLS])
+    acc = np.array(row[ACC_COLS])
     acc = acc / np.linalg.norm(acc)
 
     # create magnetometer vector
@@ -82,7 +102,8 @@ def calc_lg_q(row):
     # combine quats (Equation 13)
     lg_q = q_acc * q_mag
 
-    return lg_q
+    # only return q_mag if selected
+    return lg_q if not ONLY_Q_MAG else q_mag
 
 def calc_q_acc(ax, ay, az):
     """
