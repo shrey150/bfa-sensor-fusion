@@ -35,8 +35,8 @@ def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
 
     # invert Y and Z for accel and gyro
     # TODO: not sure if this is necessary
-    data[["AccelY", "AccelZ"]] = -data[["AccelY", "AccelZ"]]
-    data[["GyroY", "GyroZ"]] = -data[["GyroY", "GyroZ"]]
+    # data[["AccelY", "AccelZ"]] = -data[["AccelY", "AccelZ"]]
+    # data[["GyroY", "GyroZ"]] = -data[["GyroY", "GyroZ"]]
 
     # apply gyro sensitivity
     gyro_sens = params[10]

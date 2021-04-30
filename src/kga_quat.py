@@ -15,12 +15,13 @@ from pyquaternion import Quaternion
 
 #=========================================
 TEST_NAME = "euler_angles_2"
-DEBUG_LEVEL = 0
+DEBUG_LEVEL = 1
 
-USE_BUTTERWORTH = False
+# "BUTTER", "SMA", None to disable
+APPLY_SMOOTHING = "SMA"
 CALIBRATE_MAG = True
 USE_PRECALC_MAG = False
-CORRECT_MAG_AXES = True
+CORRECT_MAG_AXES = False
 ONLY_Q_MAG = False
 NORM_HEADING = True
 #=========================================
@@ -49,13 +50,13 @@ CUTOFF_FREQ = 50
 NORM_CUTOFF_FREQ = CUTOFF_FREQ / (2 * 960)
 
 # TODO: filtering mag causes inaccurate data
-if USE_BUTTERWORTH:
+if APPLY_SMOOTHING == "BUTTER":
     # Butterworth filter
     num_coeffs, denom_coeffs = scipy.signal.butter(ORDER, NORM_CUTOFF_FREQ)
     for axis in ACC_COLS: data[axis] = scipy.signal.lfilter(num_coeffs, denom_coeffs, data[axis])
-else:
+elif APPLY_SMOOTHING == "SMA":
     # simple moving average
-    data[ACC_COLS + MAG_COLS] = data[ACC_COLS + MAG_COLS].rolling(window=50).mean().fillna(data[ACC_COLS + MAG_COLS].iloc[24])
+    data[ACC_COLS] = data[ACC_COLS].rolling(window=50).mean().fillna(data[ACC_COLS].iloc[24])
 
 print("Test read.")
 
