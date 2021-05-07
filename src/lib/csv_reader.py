@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 import csv
 
+import errno
+from os import path
+
 from lib.constants import *
 
 def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
@@ -11,14 +14,17 @@ def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
     This method does NOT filter data or apply biases, only returning the readings for each sensor.
     """
 
+    # convert test_name to a path if it isn't already one
+    file_path = test_name if path.exists(test_name) else f"data/{test_name}.csv"
+
     # read test params from CSVP
-    csvp = open(f"data/{test_name}.csvp")
+    csvp = open(file_path + "p")
 
     # create params array
     params = np.array([eval(line) for line in csvp])
 
     # read data from CSV 
-    data = pd.read_csv(f"data/{test_name}.csv", names=AXES, index_col=False)
+    data = pd.read_csv(file_path, names=AXES, index_col=False)
 
     sample_rate = params[7]
 
@@ -49,14 +55,14 @@ def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
     mag_sens = 4800
     data[MAG_COLS] = data[MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
 
-    # invert MagZ to align mag axes with accel/gyro axes
-    if correct_axes: data["MagZ"] = -data["MagZ"]
+    # if selected, invert axes to align mag with accel/gyro axes
+    if correct_axes: data[["MagX","MagY"]] = -data[["MagX","MagY"]]
 
+    # FIXME: experimental mag modifications, very very incorrect
     # new_mag_data = data[MAG_COLS]
     # new_mag_data["MagX"] = -data["MagZ"]
     # new_mag_data["MagY"] = data["MagX"]
     # new_mag_data["MagZ"] = -data["MagY"]
-    
     # data[MAG_COLS] = new_mag_data
     # data[MAG_COLS] = data[MAG_COLS].values[::-1]
 

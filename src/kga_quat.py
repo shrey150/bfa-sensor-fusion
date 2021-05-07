@@ -21,7 +21,7 @@ DEBUG_LEVEL = 1
 APPLY_SMOOTHING = "SMA"
 CALIBRATE_MAG = True
 USE_PRECALC_MAG = False
-CORRECT_MAG_AXES = False
+CORRECT_MAG_AXES = True
 ONLY_Q_MAG = False
 NORM_HEADING = True
 #=========================================
