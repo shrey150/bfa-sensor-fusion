@@ -65,6 +65,8 @@ def calibrate(mag_data: pd.DataFrame, M=None, n=None, d=None) -> pd.DataFrame:
     if not (np.all(M) and np.all(n) and np.all(d)):
         M, n, d = ellipsoid_fit(np.array(mag_data).T)
 
+    print(M, n, d)
+
     # calculate calibration parameters for:
     # h_m = A @ h + b where h = A^-1 @ (h_m - b)
     M_1 = np.linalg.inv(M)

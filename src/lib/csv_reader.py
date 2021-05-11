@@ -55,8 +55,10 @@ def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
     mag_sens = 4800
     data[MAG_COLS] = data[MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
 
-    # if selected, invert axes to align mag with accel/gyro axes
-    if correct_axes: data[["MagX","MagY"]] = -data[["MagX","MagY"]]
+    # if selected, manipulate axes to align mag with accel/gyro axes
+    if correct_axes:
+        data[["MagX","MagY"]] = data[["MagY","MagX"]]
+        data["MagZ"] = -data["MagZ"]
 
     # FIXME: experimental mag modifications, very very incorrect
     # new_mag_data = data[MAG_COLS]

@@ -15,7 +15,7 @@ from pyquaternion import Quaternion
 
 #=========================================
 TEST_NAME = "euler_angles_2"
-DEBUG_LEVEL = 1
+DEBUG_LEVEL = 0
 
 # "BUTTER", "SMA", None to disable
 APPLY_SMOOTHING = "SMA"
@@ -26,15 +26,15 @@ ONLY_Q_MAG = False
 NORM_HEADING = True
 #=========================================
 
-M = np.array([[ 0.58177243, -0.02693832, -0.01330884],
-              [-0.02693832,  0.6216041,   0.00564686],
-              [-0.01330884,  0.00564686,  0.52365494]])
-        
-n = np.array([[ 24.31781846],
-                [-48.29781935],
-                [ 97.96143451]])
-    
-d = 6699.415697384884
+M = np.array([[ 0.56144721, -0.01910871, -0.01292889],
+              [-0.01910871,  0.6276801,  -0.00568568],
+              [-0.01292889, -0.00568568,  0.53873008]])
+
+n = np.array([[-13.60233683],
+              [ -1.60856291],
+              [ 11.10481335]])
+
+d = -390.59292573690266
 
 #=========================================
 
@@ -57,6 +57,7 @@ if APPLY_SMOOTHING == "BUTTER":
 elif APPLY_SMOOTHING == "SMA":
     # simple moving average
     data[ACC_COLS] = data[ACC_COLS].rolling(window=50).mean().fillna(data[ACC_COLS].iloc[24])
+    data[MAG_COLS] = data[MAG_COLS].rolling(window=50).mean().fillna(data[MAG_COLS].iloc[24])
 
 print("Test read.")
 
