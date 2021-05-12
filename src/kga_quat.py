@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import scipy.signal
 import os
 import subprocess
+import time
 
 import lib.csv_reader as reader
 import lib.mag_calibration as mag_cal
@@ -152,12 +153,33 @@ def calc_q_mag(mx, my, mz):
         
         return Quaternion(q0, 0, 0, q3)
 
+def calc_q_w(row):
+    w = row[GYRO_COLS]
+    lg_q = row["lg_q"]
+    qdot_w = calc_qdot_w(*w, lg_q)
+    return lg_q + qdot_w * (1/96)
+
+def calc_qdot_w(wx, wy, wz, lg_q):
+    w_quat = Quaternion(0, wx, wy, wz)
+    return (-1/2) * w_quat * lg_q
+
 print("Calculating local frame quats...")
 
 lg_q = data.apply(calc_lg_q, axis=1)
 
 print("Local frame quats calculated.")
-print("Converting to Euler angle representation...")
+print("Calculating gyro quats...")
+
+# process all necessary data into DF
+gyro_df = data[GYRO_COLS]
+gyro_df["lg_q"] = lg_q.shift(1)
+gyro_df = gyro_df.iloc[1:]
+
+# calculate gyro quaternions
+lg_q_w = gyro_df.apply(calc_q_w, axis=1)
+
+print("Gyro quats calculated.")
+print("Converting to Euler angles...")
 
 ANGLES = ["Yaw", "Pitch", "Roll"]
 
@@ -165,6 +187,13 @@ lg_angles = lg_q.map(lambda x: x.yaw_pitch_roll).to_list()
 lg_angles = pd.DataFrame(lg_angles, columns=ANGLES)
 lg_angles = lg_angles.applymap(lambda x: x * RAD_TO_DEG)
 lg_angles["Time"] = data["Time"].to_list()
+
+# Euler angles for gyro quaternions
+#==================================
+# lg_angles = lg_q_w.map(lambda x: x.yaw_pitch_roll).to_list()
+# lg_angles = pd.DataFrame(lg_angles, columns=ANGLES)
+# lg_angles = lg_angles.applymap(lambda x: x * RAD_TO_DEG)
+# lg_angles["Time"] = data["Time"].to_list()[1:]
 
 if NORM_HEADING:
     heading_offset = lg_angles["Yaw"].head(48).mean()
@@ -189,10 +218,16 @@ print("Saving Euler angles to 'out/ea_kga.csv'...")
 lg_angles[["Roll", "Pitch", "Yaw"]].to_csv("out/ea_kga.csv", index=False, header=False)
 print("Done.")
 
-print("Saving quats to 'out/quat_kga.csv'...")
+print("Saving lg quats to 'out/accelmag_quat_kga.csv'...")
 lg_quat_arr = lg_q.map(lambda x: x.elements).to_list()
 lg_quat_arr = pd.DataFrame(lg_quat_arr, columns=["w","x","y","z"])
-lg_quat_arr.to_csv("out/quat_kga.csv", index=False, header=False)
+lg_quat_arr.to_csv("out/accelmag_quat_kga.csv", index=False, header=False)
+print("Done.")
+
+print("Saving gyro quats to 'out/gyro_quat_kga.csv'...")
+lg_w_quat_arr = lg_q_w.map(lambda x: x.elements).to_list()
+lg_w_quat_arr = pd.DataFrame(lg_w_quat_arr, columns=["w","x","y","z"])
+lg_w_quat_arr.to_csv("out/gyro_quat_kga.csv", index=False, header=False)
 print("Done.")
 
 print("Loading orientation view...")
