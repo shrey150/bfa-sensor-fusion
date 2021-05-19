@@ -7,7 +7,7 @@ from os import path
 
 from lib.constants import *
 
-def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
+def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=False, apply_gyro_bias=False) -> pd.DataFrame:
     """
     Reads raw test data from a given CSV and returns a Pandas DataFrame.
     
@@ -44,16 +44,23 @@ def read(test_name: str, same_sps=False, correct_axes=False) -> pd.DataFrame:
     # data[["AccelY", "AccelZ"]] = -data[["AccelY", "AccelZ"]]
     # data[["GyroY", "GyroZ"]] = -data[["GyroY", "GyroZ"]]
 
+    # calculate conversion factor if selected
+    GYRO_UNITS = DEG_TO_RAD if convert_to_rads else 1
+
     # apply gyro sensitivity
     gyro_sens = params[10]
-    data[GYRO_COLS] = data[GYRO_COLS].applymap(lambda x: x * gyro_sens / 32768)
-
-    # use flipped mag axes if selected
-    MAG_AXES = CSV_MAG_COLS if correct_axes else MAG_COLS
+    data[GYRO_COLS] = data[GYRO_COLS].applymap(lambda x: x * gyro_sens * GYRO_UNITS / 32768)
 
     # apply mag sensitivity
     mag_sens = 4800
     data[MAG_COLS] = data[MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
+        
+    # calculate gyro bias using first 0.5s of data
+    gyro_offsets = data[GYRO_COLS].head(480).mean()
+
+    # apply offsets to gyroscope (remove sensor bias)
+    for i, axis in enumerate(GYRO_COLS):
+        data[axis] = data[axis].map(lambda x: x - gyro_offsets[i])
 
     # if selected, manipulate axes to align mag with accel/gyro axes
     if correct_axes:
