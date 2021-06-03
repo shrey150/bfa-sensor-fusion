@@ -50,7 +50,7 @@ if OUTPUT_FILE is None:
 
 print("Converting test...")
 
-data, params = reader.read(INPUT_FILE, same_sps=SAME_SPS, correct_axes=True)
+data, params = reader.read(INPUT_FILE, same_sps=SAME_SPS, correct_axes=True, apply_gyro_bias=True)
 
 if CALIBRATE_MAG:
     print("Calibrating magnetometer data...")
