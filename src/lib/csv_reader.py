@@ -10,8 +10,17 @@ from lib.constants import *
 def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=False, apply_gyro_bias=False) -> pd.DataFrame:
     """
     Reads raw test data from a given CSV and returns a Pandas DataFrame.
-    
-    This method does NOT filter data or apply biases, only returning the readings for each sensor.
+
+    Parameters
+    ----------
+    test_name: either a path to the CSV file or the name of the test in the `data` folder.
+    same_sps: indicates whether accel/gyro data should be "downsampled" to match the mag's sample rate of 96sps.
+    correct_axes: indicates whether magnetometer axes should be manipulated to align with accel/gyro axes (necessary for MPU-9250 data).
+    convert_to_rads: indicates whether gyro readings should be converted from deg/s to rad/s (necessary for KGA algorithm).
+    apply_gyro_bias: indicates whether gyro readings should be "normalized" to 0 (vertically shifting the data to rest on the x-axis).
+
+    Assumes data is 960sps for accel/gyro readings and 96sps for mag.
+    This method does NOT filter data, only returning the readings for each sensor.
     """
 
     # convert test_name to a path if it isn't already one
@@ -39,11 +48,6 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
     acc_sens = params[9]
     data[ACC_COLS] = data[ACC_COLS].applymap(lambda x: x * acc_sens * GRAVITY / 32768)
 
-    # invert Y and Z for accel and gyro
-    # TODO: not sure if this is necessary
-    # data[["AccelY", "AccelZ"]] = -data[["AccelY", "AccelZ"]]
-    # data[["GyroY", "GyroZ"]] = -data[["GyroY", "GyroZ"]]
-
     # calculate conversion factor if selected
     GYRO_UNITS = DEG_TO_RAD if convert_to_rads else 1
 
@@ -67,21 +71,13 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
         data[["MagX","MagY"]] = data[["MagY","MagX"]]
         data["MagZ"] = -data["MagZ"]
 
-    # FIXME: experimental mag modifications, very very incorrect
-    # new_mag_data = data[MAG_COLS]
-    # new_mag_data["MagX"] = -data["MagZ"]
-    # new_mag_data["MagY"] = data["MagX"]
-    # new_mag_data["MagZ"] = -data["MagY"]
-    # data[MAG_COLS] = new_mag_data
-    # data[MAG_COLS] = data[MAG_COLS].values[::-1]
-
     # reorder axes so that mag columns are in X-Y-Z order
     data = data[["Time"] + AXES]
     
     #fill null mag values with previous value
     data = data.fillna(method='ffill')
 
-    # if enabled, remove every 10th row to create 96sps data
+    # if enabled, only keep every 10th row to create 96sps data
     if same_sps: 
         data = data.iloc[::10]
         params[7] /= 10

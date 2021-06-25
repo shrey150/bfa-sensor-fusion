@@ -15,26 +15,38 @@ from lib.constants import *
 from pyquaternion import Quaternion
 
 #=========================================
+# CHANGE THIS LINE TO USE A DIFFERENT TEST
 TEST_NAME = "euler_angles_2"
-DEBUG_LEVEL = 0
+#=========================================
+# KGA algorithm config parameters
 
-# "BUTTER", "SMA", None to disable
-APPLY_SMOOTHING = None
-CALIBRATE_MAG = True
-USE_PRECALC_MAG = False
-CORRECT_MAG_AXES = True
-ONLY_Q_MAG = False
-NORM_HEADING = True
-CALC_ACCELMAG_ONLY = False
-USE_ADAPTIVE_GAIN = True
-UPDATE_GYRO_BIAS = True
+APPLY_SMOOTHING = None      # "BUTTER", "SMA", None to disable
+CALIBRATE_MAG = True        # should be disabled if mag data is already calibrated 
+USE_PRECALC_MAG = False     # uses hard-coded mag calibration parameters
+CORRECT_MAG_AXES = True     # re-aligns mag axes to match accel/gyro axes (needed for MPU-9250 data)
+NORM_HEADING = True         # normalizes yaw in euler angles graph (cosmetic, does not affect calculations)
 
+#=========================================
+# KGA debugging parameters (not commonly used)
+
+DEBUG_LEVEL = 0             # displays more detailed data graphs
+ONLY_Q_MAG = False          # only returns the mag quat from `calc_lg_q`
+ONLY_CALC_ACCELMAG = False  # excludes gyro from orientation calculations
+ONLY_CALC_GYRO = False      # only calculates gyro quat for orientation
+
+#=========================================
+# KGA complementary filter parameters
 GAIN = 0.01
 BIAS_ALPHA = 0.01
 GYRO_THRESHOLD = 0.2
 ACC_THRESHOLD = 0.1
 DELTA_GYRO_THRESHOLD = 0.1
+
+USE_ADAPTIVE_GAIN = True
+UPDATE_GYRO_BIAS = True
 #=========================================
+# Hard-coded mag parameters for "euler_angles_2"
+# (intended to be used with `USE_PRECALC_MAG`)
 
 M = np.array([[ 0.56144721, -0.01910871, -0.01292889],
               [-0.01910871,  0.6276801,  -0.00568568],
@@ -47,6 +59,8 @@ n = np.array([[-13.60233683],
 d = -390.59292573690266
 
 #=========================================
+# SEE ALSO: KGA C++ implementation, published by the authors of the original paper
+# https://github.com/ccny-ros-pkg/imu_tools/blob/indigo/imu_complementary_filter/src/complementary_filter.cpp
 
 print("KGA algorithm started.")
 print(f"Reading test '{TEST_NAME}'...")
@@ -54,15 +68,18 @@ print(f"Reading test '{TEST_NAME}'...")
 # read test data at 96 samples/second and convert gyro data to rads
 data, params = reader.read(TEST_NAME, same_sps=True, correct_axes=CORRECT_MAG_AXES, convert_to_rads=True, apply_gyro_bias=True)
 
-# normalized cutoff frequency = cutoff frequency / (2 * sample rate)
-ORDER = 10
-CUTOFF_FREQ = 50
-NORM_CUTOFF_FREQ = CUTOFF_FREQ / (2 * 960)
-
 if APPLY_SMOOTHING == "BUTTER":
+    # Butterworth filter parameters (somewhat arbitrary, but not being used)
+    ORDER = 10
+    CUTOFF_FREQ = 50
+
+    # normalized cutoff frequency = cutoff frequency / (2 * sample rate)
+    NORM_CUTOFF_FREQ = CUTOFF_FREQ / (2 * 960)
+
     # Butterworth filter
     num_coeffs, denom_coeffs = scipy.signal.butter(ORDER, NORM_CUTOFF_FREQ)
     for axis in ACC_COLS: data[axis] = scipy.signal.lfilter(num_coeffs, denom_coeffs, data[axis])
+
 elif APPLY_SMOOTHING == "SMA":
     # simple moving average
     data[ACC_COLS] = data[ACC_COLS].rolling(window=50).mean().fillna(data[ACC_COLS].iloc[24])
@@ -164,11 +181,9 @@ def calc_lg_q(row):
     # calculate gyro quaternion
     lg_q_w = calc_q_w(*gyro)
 
-    ########################
-    # TEMPORARY GYRO QUAT TEST
-    # lg_q_t = lg_q_w
-    # return lg_q_w
-    ########################
+    if ONLY_CALC_GYRO:
+        lg_q_t = lg_q_w
+        return lg_q_w
 
     # rotate acc vector into frame
     g_pred = lg_q_w.inverse.rotate(acc)
@@ -353,7 +368,7 @@ print("Initial orientation calculated.")
 print("Calculating orientations w/ gyro data...")
 
 # choose selected orientation calculation function
-calc_func = calc_lg_q_accelmag if CALC_ACCELMAG_ONLY else calc_lg_q
+calc_func = calc_lg_q_accelmag if ONLY_CALC_ACCELMAG else calc_lg_q
 
 lg_q = data.apply(calc_func, axis=1)
 
@@ -366,13 +381,6 @@ lg_angles = lg_q.map(lambda x: x.yaw_pitch_roll).to_list()
 lg_angles = pd.DataFrame(lg_angles, columns=ANGLES)
 lg_angles = lg_angles.applymap(lambda x: x * RAD_TO_DEG)
 lg_angles["Time"] = data["Time"].to_list()
-
-# Euler angles for gyro quaternions
-#==================================
-# lg_angles = lg_q_w.map(lambda x: x.yaw_pitch_roll).to_list()
-# lg_angles = pd.DataFrame(lg_angles, columns=ANGLES)
-# lg_angles = lg_angles.applymap(lambda x: x * RAD_TO_DEG)
-# lg_angles["Time"] = data["Time"].to_list()[1:]
 
 if NORM_HEADING:
     heading_offset = lg_angles["Yaw"].head(48).mean()
