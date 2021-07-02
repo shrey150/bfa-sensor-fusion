@@ -29,10 +29,11 @@ NORM_HEADING = True         # normalizes yaw in euler angles graph (cosmetic, do
 #=========================================
 # KGA debugging parameters (not commonly used)
 
-DEBUG_LEVEL = 0             # displays more detailed data graphs
+DEBUG_LEVEL = 0             # displays more detailed data graphs when set to 1
 ONLY_Q_MAG = False          # only returns the mag quat from `calc_lg_q`
 ONLY_CALC_ACCELMAG = False  # excludes gyro from orientation calculations
 ONLY_CALC_GYRO = False      # only calculates gyro quat for orientation
+HIDE_ROLL = True            # if selected, hides roll from graph
 
 #=========================================
 # KGA complementary filter parameters
@@ -399,7 +400,10 @@ if DEBUG_LEVEL == 2:
     plt.plot(lg_angles["Time"], lg_angles["Yaw"])
     plotter.show_plot()
 
-plotter.draw_sensor(lg_angles["Time"], lg_angles[ANGLES], "ea_kga")
+# if selected, don't graph roll
+GRAPHED_ANGLES = ANGLES if not HIDE_ROLL else ["Yaw", "Pitch"]
+
+plotter.draw_sensor(lg_angles["Time"], lg_angles[GRAPHED_ANGLES], "ea_kga")
 
 print("Saving Euler angles to 'out/ea_kga.csv'...")
 lg_angles[["Roll", "Pitch", "Yaw"]].to_csv("out/ea_kga.csv", index=False, header=False)
