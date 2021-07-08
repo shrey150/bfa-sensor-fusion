@@ -62,6 +62,10 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
     # calculate gyro bias using first 0.5s of data
     gyro_offsets = data[GYRO_COLS].head(480).mean()
 
+    # if selected, calculate gyro bias using first 0.5s of data
+    if apply_gyro_bias:
+        gyro_offsets = data[GYRO_COLS].head(480).mean()
+
     if apply_gyro_bias:
         # apply offsets to gyroscope (remove sensor bias)
         for i, axis in enumerate(GYRO_COLS):
@@ -74,7 +78,7 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
 
     # reorder axes so that mag columns are in X-Y-Z order
     data = data[["Time"] + AXES]
-
+    
     #fill null mag values with previous value
     data = data.fillna(method='ffill')
 
