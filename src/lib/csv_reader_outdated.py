@@ -32,13 +32,13 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
     # create params array
     params = np.array([eval(line) for line in csvp])
 
-    # read data from CSV
+    # read data from CSV 
     data = pd.read_csv(file_path, names=AXES, index_col=False)
 
     sample_rate = params[7]
 
     # add time axis to data set
-    time = np.linspace(0, len(data)/sample_rate, num=len(data), endpoint=False)
+    time = np.arange(0, len(data)/sample_rate, 1/sample_rate)
     data.insert(0, "Time", time)
 
     # sign data
@@ -58,14 +58,13 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
     # apply mag sensitivity
     mag_sens = 4800
     data[MAG_COLS] = data[MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
-
+        
     # calculate gyro bias using first 0.5s of data
     gyro_offsets = data[GYRO_COLS].head(480).mean()
 
-    if apply_gyro_bias:
-        # apply offsets to gyroscope (remove sensor bias)
-        for i, axis in enumerate(GYRO_COLS):
-            data[axis] = data[axis].map(lambda x: x - gyro_offsets[i])
+    # apply offsets to gyroscope (remove sensor bias)
+    for i, axis in enumerate(GYRO_COLS):
+        data[axis] = data[axis].map(lambda x: x - gyro_offsets[i])
 
     # if selected, manipulate axes to align mag with accel/gyro axes
     if correct_axes:
@@ -74,12 +73,12 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
 
     # reorder axes so that mag columns are in X-Y-Z order
     data = data[["Time"] + AXES]
-
+    
     #fill null mag values with previous value
     data = data.fillna(method='ffill')
 
     # if enabled, only keep every 10th row to create 96sps data
-    if same_sps:
+    if same_sps: 
         data = data.iloc[::10]
         params[7] /= 10
 
