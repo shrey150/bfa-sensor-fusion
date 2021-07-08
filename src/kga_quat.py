@@ -16,7 +16,14 @@ from pyquaternion import Quaternion
 
 #=========================================
 # CHANGE THIS LINE TO USE A DIFFERENT TEST
-TEST_NAME = "euler_angles_2"
+TEST_NAME = "T5 July 7, 2021 Mag Cal 1min  [2021.07.07 - 14.52]  960-96 16G-92 2000dps-92 MAG-N"
+
+#=========================================
+# KGA magnetometer calibration data range config parameters
+
+MAG_CAL_START = None
+MAG_CAL_END = None
+
 #=========================================
 # KGA algorithm config parameters
 
@@ -29,10 +36,11 @@ NORM_HEADING = True         # normalizes yaw in euler angles graph (cosmetic, do
 #=========================================
 # KGA debugging parameters (not commonly used)
 
-DEBUG_LEVEL = 0             # displays more detailed data graphs
+DEBUG_LEVEL = 1             # displays more detailed data graphs when set to 1
 ONLY_Q_MAG = False          # only returns the mag quat from `calc_lg_q`
 ONLY_CALC_ACCELMAG = False  # excludes gyro from orientation calculations
 ONLY_CALC_GYRO = False      # only calculates gyro quat for orientation
+HIDE_ROLL = True            # if selected, hides roll from graph
 
 #=========================================
 # KGA complementary filter parameters
@@ -93,13 +101,18 @@ if CALIBRATE_MAG:
     if USE_PRECALC_MAG:
         data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS], M, n, d)
     else:
-        data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS])
-
+        data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS], first=MAG_CAL_START, last=MAG_CAL_END)
+ 
     print("Magnetometer calibration complete.")
 
 # DEBUG: plot data
 if DEBUG_LEVEL == 1:
-    plotter.draw_mag_sphere(data["MagX"], data["MagY"], data["MagZ"])
+    if not (MAG_CAL_START is None or MAG_CAL_END is None):
+        print(data["MagY"].loc[MAG_CAL_START:MAG_CAL_END].head)
+        plotter.draw_mag_sphere(data["MagX"].loc[MAG_CAL_START:MAG_CAL_END], data["MagY"].loc[MAG_CAL_START:MAG_CAL_END], data["MagZ"].loc[MAG_CAL_START:MAG_CAL_END])
+    else:
+        plotter.draw_mag_sphere(data["MagX"], data["MagY"], data["MagZ"])
+
     plotter.draw_all(data)
 
 ##############################################################################
@@ -322,7 +335,8 @@ def update_gyro_bias(acc_mag, w):
 
     if is_steady_state(acc_mag, *w):
         w_bias = BIAS_ALPHA * (w - w_bias)
-        print(f"Module at rest, updating gyro bias: {w_bias}")
+        if DEBUG_LEVEL:
+            print(f"Module at rest, updating gyro bias: {w_bias}")
 
     # update previous gyro calculation
     w_prev = w
@@ -367,6 +381,9 @@ lg_q_prev = calc_lg_q_accelmag(data.iloc[0])
 print("Initial orientation calculated.")
 print("Calculating orientations w/ gyro data...")
 
+if not DEBUG_LEVEL:
+    print("Updating Gyro Biases")
+
 # choose selected orientation calculation function
 calc_func = calc_lg_q_accelmag if ONLY_CALC_ACCELMAG else calc_lg_q
 
@@ -399,7 +416,10 @@ if DEBUG_LEVEL == 2:
     plt.plot(lg_angles["Time"], lg_angles["Yaw"])
     plotter.show_plot()
 
-plotter.draw_sensor(lg_angles["Time"], lg_angles[ANGLES], "ea_kga")
+# if selected, don't graph roll
+GRAPHED_ANGLES = ANGLES if not HIDE_ROLL else ["Yaw", "Pitch"]
+
+plotter.draw_sensor(lg_angles["Time"], lg_angles[GRAPHED_ANGLES], "ea_kga")
 
 print("Saving Euler angles to 'out/ea_kga.csv'...")
 lg_angles[["Roll", "Pitch", "Yaw"]].to_csv("out/ea_kga.csv", index=False, header=False)
