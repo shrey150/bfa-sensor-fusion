@@ -1,3 +1,4 @@
 .vscode
 src/lib/__pycache__
 out/
+venv/
