@@ -16,7 +16,7 @@ from pyquaternion import Quaternion
 
 #=========================================
 # CHANGE THIS LINE TO USE A DIFFERENT TEST
-TEST_NAME = "T5 July 7, 2021 Mag Cal 1min  [2021.07.07 - 14.52]  960-96 16G-92 2000dps-92 MAG-N"
+TEST_NAME = "euler_angles_2"
 
 #=========================================
 # KGA magnetometer calibration data range config parameters
@@ -28,7 +28,7 @@ MAG_CAL_END = None
 # KGA algorithm config parameters
 
 APPLY_SMOOTHING = None      # "BUTTER", "SMA", None to disable
-CALIBRATE_MAG = True        # should be disabled if mag data is already calibrated 
+CALIBRATE_MAG = True        # should be disabled if mag data is already calibrated
 USE_PRECALC_MAG = False     # uses hard-coded mag calibration parameters
 CORRECT_MAG_AXES = True     # re-aligns mag axes to match accel/gyro axes (needed for MPU-9250 data)
 NORM_HEADING = True         # normalizes yaw in euler angles graph (cosmetic, does not affect calculations)
@@ -71,6 +71,11 @@ d = -390.59292573690266
 # https://github.com/ccny-ros-pkg/imu_tools/blob/indigo/imu_complementary_filter/src/complementary_filter.cpp
 
 print("KGA algorithm started.")
+
+if not os.path.isdir('out'):
+    print("output folder does not exist, creating new.")
+    os.makedirs("out")
+
 print(f"Reading test '{TEST_NAME}'...")
 
 # read test data at 96 samples/second and convert gyro data to rads
@@ -102,7 +107,7 @@ if CALIBRATE_MAG:
         data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS], M, n, d)
     else:
         data[MAG_COLS] = mag_cal.calibrate(data[MAG_COLS], first=MAG_CAL_START, last=MAG_CAL_END)
- 
+
     print("Magnetometer calibration complete.")
 
 # DEBUG: plot data
@@ -181,7 +186,7 @@ def calc_lg_q(row):
 
     # create gyro vector and remove current bias
     gyro = np.array(row[GYRO_COLS])
-    
+
     # update gyro bias calculation
     if UPDATE_GYRO_BIAS: update_gyro_bias(acc_mag, gyro)
 
@@ -267,7 +272,7 @@ def calc_q_mag(mx, my, mz):
     elif mx < 0:
         q0 = my / (sqrt(2) * sqrt(L - mx*sqrt(L)))
         q3 = sqrt(L - mx*sqrt(L)) / sqrt(2*L)
-        
+
         return Quaternion(q0, 0, 0, q3)
 
 def calc_q_w(wx, wy, wz):
@@ -302,7 +307,7 @@ def calc_gain(alpha, a_mag):
     else:
         factor = 0.0
 
-    return factor*alpha  
+    return factor*alpha
 
 def is_steady_state(acc_mag, wx, wy, wz):
     """
