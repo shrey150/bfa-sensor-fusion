@@ -59,14 +59,10 @@ def read(test_name: str, same_sps=False, correct_axes=False, convert_to_rads=Fal
     mag_sens = 4800
     data[MAG_COLS] = data[MAG_COLS].applymap(lambda x: x * mag_sens / 32768)
 
-    # calculate gyro bias using first 0.5s of data
-    gyro_offsets = data[GYRO_COLS].head(480).mean()
-
-    # if selected, calculate gyro bias using first 0.5s of data
     if apply_gyro_bias:
+        # if selected, calculate gyro bias using first 0.5s of data
         gyro_offsets = data[GYRO_COLS].head(480).mean()
 
-    if apply_gyro_bias:
         # apply offsets to gyroscope (remove sensor bias)
         for i, axis in enumerate(GYRO_COLS):
             data[axis] = data[axis].map(lambda x: x - gyro_offsets[i])
