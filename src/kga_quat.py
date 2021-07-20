@@ -12,6 +12,8 @@ import lib.mag_calibration as mag_cal
 import lib.plotter as plotter
 from lib.constants import *
 
+from FFT import plot_fft
+
 from pyquaternion import Quaternion
 
 #=========================================
@@ -23,6 +25,13 @@ TEST_NAME = "euler_angles_2"
 
 MAG_CAL_START = None
 MAG_CAL_END = None
+
+#=========================================
+# FFT config parameters
+
+FFT_AXIS = "Pitch"  # None to disable, ["Yaw", "Pitch", "Roll"]
+FFT_START = None
+FFT_END = None
 
 #=========================================
 # KGA algorithm config parameters
@@ -186,7 +195,7 @@ def calc_lg_q(row):
 
     # create gyro vector and remove current bias
     gyro = np.array(row[GYRO_COLS])
-
+    
     # update gyro bias calculation
     if UPDATE_GYRO_BIAS: update_gyro_bias(acc_mag, gyro)
 
@@ -435,6 +444,14 @@ lg_quat_arr = lg_q.map(lambda x: x.elements).to_list()
 lg_quat_arr = pd.DataFrame(lg_quat_arr, columns=["w","x","y","z"])
 lg_quat_arr.to_csv("out/quat_kga.csv", index=False, header=False)
 print("Done.")
+
+if FFT_AXIS is not None:
+    print("Plotting FFT")
+    if not (FFT_START is None or FFT_END is None):
+        plot_fft(lg_angles.loc[FFT_START:FFT_END], FFT_AXIS)
+    else:
+        plot_fft(lg_angles, FFT_AXIS)
+    print("Done.")
 
 print("Loading orientation view...")
 
